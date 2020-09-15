@@ -1,0 +1,125 @@
+lengthrsi=input(13)
+lengthband=input(34)
+lengthrsipl=input(2)
+lengthtradesl=input(7)
+lenH = input(5, minval=1, title="Price Action Channel Length")
+lenL = lenH
+rsiOSL= input(22, minval=0,maxval=49,title="RSI Oversold Level")
+rsiOBL= input(78, minval=51,maxval=100,title="RSI Overbought Level")
+strength = input(2,minval=1,maxval=3,step=1,title="Strength Level: (1)Strong (2)Medium (3)All")
+sgb = input(false, title="Check Box To Turn Bars Gray")
+sbr = input(true, title="Highlight TDI Alert Bars")
+sal = input(true, title="Show Alert Condition Status")
+uha = input(false, title="Use Heikin Ashi Candles for Calculations")
+sspikes = input(false, title="Show Spike LONG and SHORT Signals")
+//
+
+// Constants colours that include fully non-transparent option.
+blue100  = #0000FFFF
+aqua100  = #00FFFFFF
+fuchsia100 = #FF00FFFF
+purple100 = #800080FF
+gray100 = #808080FF
+gold100 = #FFD700FF
+white100 = #FFFFFFFF
+black100 = #000000FF
+gold = #FFD700
+
+// Use only Heikinashi Candles for all calculations or use Standard Candles for calculations.
+srcClose = uha ? security(heikinashi(tickerid), period, close) : security(ticker, period, close)
+srcOpen = uha ? security(heikinashi(tickerid), period, open) :  security(ticker, period, open)
+srcHigh = uha ? security(heikinashi(tickerid), period, high) :  security(ticker, period, high)
+srcLow = uha ?security(heikinashi(tickerid), period, low) :  security(ticker, period, low)
+//
+r=rsi(srcClose, lengthrsi)
+ma=sma(r,lengthband)
+offs=(1.6185 * stdev(r, lengthband))
+upZone=ma+offs
+dnZone=ma-offs
+mid=(upZone+dnZone)/2
+mab=sma(r, lengthrsipl)
+mbb=sma(r, lengthtradesl)
+//
+hline(rsiOSL, color=red, linewidth=1)
+hline(50, color=black, linewidth=1)
+hline(rsiOBL, color=lime, linewidth=1)
+// Plot the TDI
+upl=plot(upZone, color=blue, title="VB Channel High",linewidth=2)
+dnl=plot(dnZone, color=blue, title="VB Channel Low",linewidth=2)
+midl=plot(mid, color=orange, linewidth=2, title="MBL")
+mabl=plot(mab, color=green, linewidth=2, title="RSI PL")
+mbbl=plot(mbb, color=red, linewidth=2, title="TSL Signal")
+//
+//create RSI TSL cloud to indicate trend direction.
+fill(mabl,mbbl, color=mab>mbb?green:red,transp=90)
+
+// Calculate Price Action Channel (PAC)
+smmaH = 0.0
+smmaL = 0.0
+smmaH := na(smmaH[1]) ? sma(srcHigh, lenH) : (smmaH[1] * (lenH - 1) + srcHigh) / lenH
+smmaL := na(smmaL[1]) ? sma(srcLow, lenL) : (smmaL[1] * (lenL - 1) + srcLow) / lenL
+//
+umacd  = input(false,title="Use MACD Filtering")
+fastMA = input(title="MACD Fast MA Length", type = integer, defval = 8, minval = 2)
+slowMA = input(title="MACD Slow MA Length", type = integer, defval = 16, minval = 7)
+signal = input(title="MACD Signal Length",type=integer,defval=1,minval=1)
+//
+//
+[currMacd,_,_] = macd(srcClose[0], fastMA, slowMA, signal)
+macdH = currMacd > 0 ? rising(currMacd,2) ? green : red : falling(currMacd, 2) ? red : green
+//
+// Bar - Highlighting  based on indication strength
+long= (not umacd or macdH==green) and mab > mbb and mab < rsiOBL and mab > rsiOSL and srcHigh > smmaH and srcClose > srcOpen ? 
+  mbb > mid ? 1 : mab>mid and mbb<mid ? 2 : mab<mid and mbb<mid ? 3 : 0: 0
+short= (not umacd or macdH==red) and mab < mbb and mab <rsiOBL and mab > rsiOSL and srcLow < smmaL and srcClose < srcOpen ? 
+  mbb < mid ? 1 : mab<mid and mbb>mid ? 2 :mab>mid and mbb>mid ? 3 : 0 : 0
+//
+// Find the right Bar colour if enabled.
+bcolor = not sbr? na : long==1? gold100: long==2 and strength>1? aqua100:long==3 and strength>2? blue100:
+                       short==1? fuchsia100: short==2 and strength>1? purple100:short==3 and strength>2? black100 : 
+                       sgb ? gray100 : na
+//
+barcolor(color=bcolor,title="Bars Colours")
+//
+//
+// create alerts only once per sequence type.
+//
+long_ = (long>0 and long!=long[1] and long<=strength)
+short_ = (short>0 and short!=short[1] and short<=strength)
+
+c_alert =  long_ or short_ 
+alertcondition(c_alert[1] and barstate.isnew, title="TDIALT Alert", message="TDIALT Alert")
+alertcondition(long_[1] and barstate.isnew, title="TDIALT Long Alert", message="TDIALT Long")
+alertcondition(short_[1] and barstate.isnew, title="TDIALT Short Alert", message="TDIALT Short")
+
+// Single Alert Strategy
+stateLong = 0
+stateShort = 0
+stateLong_ = nz(stateLong[1])
+stateShort_ = nz(stateShort[1])
+
+//Count the long signals before next short
+if (long[1]>0 and long[1]<=strength)
+    stateLong_ := stateLong_>0 ? stateLong_+1 : 1
+    stateShort_:= 0
+
+//Count the short signals before next long.    
+if (short[1]>0 and short[1]<=strength)
+    stateShort_ :=  stateShort_>0 ? stateShort_+1 : 1
+    stateLong_ := 0
+
+//create spikes, hide them by setting transp=100
+plot( sspikes?stateLong_==1? 100 : 0:na, color=blue, title="LONG",transp=50)
+plot( sspikes?stateShort_==1? 100 :0:na, color=red, title="SHORT",transp=50)
+
+//keep current state counts.
+stateLong  := stateLong_>0? stateLong_+1 : 0
+stateShort := stateShort_>0? stateShort_+1 : 0
+
+//
+// show dot only when alert condition is met and bar closed.
+plotshape(sal and c_alert[1],title= "Alert Indicator", location=location.bottom, 
+  color=long[1]==1? gold: long[1]==2?aqua:long[1]==3?blue:short[1]==1?fuchsia: 
+  short[1]==2?purple:short[1]==3? black : na, transp=0, style=shape.circle,offset=-1)
+//
+//EOF
