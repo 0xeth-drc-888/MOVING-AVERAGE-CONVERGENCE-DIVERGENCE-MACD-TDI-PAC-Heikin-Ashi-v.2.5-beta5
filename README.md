@@ -1,7 +1,7 @@
 # MOVING-AVERAGE-CONVERGENCE-DIVERGENCE-MACD-TDI-PAC-Heikin-Ashi-V.2.5
 This is a trend trading indicator and alert that utilizes the Traders Dynamic Index ( TDI ), Price Action Channel (PAC) and Heikin Ashi candles.
 
-# About 6months ago I came across the use of TDI in "E.A.S.Y. Method" that I found in forexfactory forums: http://www.forexfactory.com/attachment.p...
+About 6months ago I came across the use of TDI in "E.A.S.Y. Method" that I found in forexfactory forums: http://www.forexfactory.com/attachment.p...
 and I was able to set up a chart based on the specifications by using Kurbelklaus scripts. However, I found that the alerts were being generated one or two bars too late, so at that time I was not successful using it with Binary Options. A few months later I found a variation of the method in the forecfactory forums which is able to generate the alerts a bit earlier, so this indicator is a modification of that early detection version.
 
 The indicator can optionally use Heikin Ashi candles only for all it's calculation. I would recommend viewing the chart with Heikin Ashi candles, these smooth out the trends and makes trends very clear.
